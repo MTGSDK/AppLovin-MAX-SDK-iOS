@@ -7,8 +7,8 @@
 #import <MTGSDK/MTGSDK.h>
 #import <MTGSDK/MTGErrorCodeConstant.h>
 #import <MTGSDKBidding/MTGBiddingSDK.h>
-#import <MTGSDKInterstitialVideo/MTGBidInterstitialVideoAdManager.h>
-#import <MTGSDKInterstitialVideo/MTGInterstitialVideoAdManager.h>
+#import <MTGSDKNewInterstitial/MTGNewInterstitialAdManager.h>
+#import <MTGSDKNewInterstitial/MTGNewInterstitialBidAdManager.h>
 #import <MTGSDKReward/MTGRewardAdManager.h>
 #import <MTGSDKReward/MTGBidRewardAdManager.h>
 #import <MTGSDKBanner/MTGBannerAdView.h>
@@ -31,7 +31,7 @@
 #define EXCEPTION_APP_ID_EMPTY -1301 // appID is empty
 #define EXCEPTION_APP_NOT_FOUND -1302 // Can not find the appId
 
-@interface ALMintegralMediationAdapterInterstitialDelegate : NSObject<MTGInterstitialVideoDelegate, MTGBidInterstitialVideoDelegate>
+@interface ALMintegralMediationAdapterInterstitialDelegate : NSObject<MTGNewInterstitialAdDelegate,MTGNewInterstitialBidAdDelegate>
 @property (nonatomic,   weak) ALMintegralMediationAdapter *parentAdapter;
 @property (nonatomic, strong) id<MAInterstitialAdapterDelegate> delegate;
 - (instancetype)initWithParentAdapter:(ALMintegralMediationAdapter *)parentAdapter andNotify:(id<MAInterstitialAdapterDelegate>)delegate;
@@ -67,8 +67,8 @@
 
 @interface ALMintegralMediationAdapter()
 
-@property (nonatomic, strong) MTGBidInterstitialVideoAdManager *bidInterstitialVideoManager;
-@property (nonatomic, strong) MTGInterstitialVideoAdManager *interstitialVideoManager;
+@property (nonatomic, strong) MTGNewInterstitialBidAdManager *bidInterstitialVideoManager;
+@property (nonatomic, strong) MTGNewInterstitialAdManager *interstitialVideoManager;
 @property (nonatomic, strong) MTGBannerAdView *bannerAdView;
 @property (nonatomic, strong) MTGBidNativeAdManager *bidNativeAdManager;
 @property (nonatomic, strong) MTGCampaign *nativeAdCampaign;
@@ -160,10 +160,10 @@ static NSTimeInterval const kDefaultImageTaskTimeoutSeconds = 5.0; // Mintegral 
 
 - (void)destroy
 {
-    self.bidInterstitialVideoManager.delegate = nil;
+    //self.bidInterstitialVideoManager.delegate = nil;
     self.bidInterstitialVideoManager = nil;
     
-    self.interstitialVideoManager.delegate = nil;
+    //self.interstitialVideoManager.delegate = nil;
     self.interstitialVideoManager = nil;
     
     [self.bannerAdView destroyBannerAdView];
@@ -209,11 +209,11 @@ static NSTimeInterval const kDefaultImageTaskTimeoutSeconds = 5.0; // Mintegral 
     {
         [self log: @"Loading bidding interstitial for unit id: %@ and placement id: %@...", unitId, placementId];
         
-        self.bidInterstitialVideoManager = [[MTGBidInterstitialVideoAdManager alloc] initWithPlacementId: placementId
+        self.bidInterstitialVideoManager = [[MTGNewInterstitialBidAdManager alloc] initWithPlacementId: placementId
                                                                                                   unitId: unitId
                                                                                                 delegate: self.interstitialDelegate];
         
-        if ( [self.bidInterstitialVideoManager isVideoReadyToPlayWithPlacementId: placementId unitId: unitId] )
+        if ( [self.bidInterstitialVideoManager isAdReady] )
         {
             [self log: @"A bidding interstitial ad is ready already"];
             [delegate didLoadInterstitialAd];
@@ -230,11 +230,11 @@ static NSTimeInterval const kDefaultImageTaskTimeoutSeconds = 5.0; // Mintegral 
     {
         [self log: @"Loading mediated interstitial ad for unit id: %@ and placement id: %@...", unitId, placementId];
         
-        self.interstitialVideoManager = [[MTGInterstitialVideoAdManager alloc] initWithPlacementId: placementId
+        self.interstitialVideoManager = [[MTGNewInterstitialAdManager alloc] initWithPlacementId: placementId
                                                                                             unitId: unitId
                                                                                           delegate: self.interstitialDelegate];
         
-        if ( [self.interstitialVideoManager isVideoReadyToPlayWithPlacementId: placementId unitId: unitId] )
+        if ( [self.interstitialVideoManager isAdReady] )
         {
             [self log: @"A mediated interstitial ad is ready already"];
             [delegate didLoadInterstitialAd];
@@ -251,10 +251,11 @@ static NSTimeInterval const kDefaultImageTaskTimeoutSeconds = 5.0; // Mintegral 
 
 - (void)showInterstitialAdForParameters:(id<MAAdapterResponseParameters>)parameters andNotify:(id<MAInterstitialAdapterDelegate>)delegate
 {
-    NSString *unitId = parameters.thirdPartyAdPlacementIdentifier;
-    NSString *placementId = [parameters.serverParameters al_stringForKey: @"placement_id"];
+    // comment unused codes.
+    // NSString *unitId = parameters.thirdPartyAdPlacementIdentifier;
+    // NSString *placementId = [parameters.serverParameters al_stringForKey: @"placement_id"];
     
-    if ( [self.bidInterstitialVideoManager isVideoReadyToPlayWithPlacementId: placementId unitId: unitId] )
+    if ( [self.bidInterstitialVideoManager isAdReady] )
     {
         [self log: @"Showing bidding interstitial..."];
         
@@ -270,7 +271,7 @@ static NSTimeInterval const kDefaultImageTaskTimeoutSeconds = 5.0; // Mintegral 
         
         [self.bidInterstitialVideoManager showFromViewController: presentingViewController];
     }
-    else if ( [self.interstitialVideoManager isVideoReadyToPlayWithPlacementId: placementId unitId: unitId] )
+    else if ( [self.interstitialVideoManager isAdReady] )
     {
         [self log: @"Showing mediated interstitial..."];
         
@@ -556,7 +557,6 @@ static NSTimeInterval const kDefaultImageTaskTimeoutSeconds = 5.0; // Mintegral 
 
 @end
 
-#pragma mark - MTGInterstitialDelegate Methods
 
 @implementation ALMintegralMediationAdapterInterstitialDelegate
 
@@ -571,7 +571,9 @@ static NSTimeInterval const kDefaultImageTaskTimeoutSeconds = 5.0; // Mintegral 
     return self;
 }
 
-- (void)onInterstitialVideoLoadSuccess:(MTGInterstitialVideoAdManager *)adManager
+#pragma mark - MTGNewInterstitialAdDelegate Methods
+
+- (void)newInterstitialAdResourceLoadSuccess:(MTGNewInterstitialAdManager *_Nonnull)adManager
 {
     // Ad has loaded and video has been downloaded
     [self.parentAdapter log: @"Interstitial successfully loaded and video has been downloaded"];
@@ -589,13 +591,13 @@ static NSTimeInterval const kDefaultImageTaskTimeoutSeconds = 5.0; // Mintegral 
     }
 }
 
-- (void)onInterstitialAdLoadSuccess:(MTGInterstitialVideoAdManager *)adManager
+- (void)newInterstitialAdLoadSuccess:(MTGNewInterstitialAdManager *_Nonnull)adManager
 {
     // Ad has loaded but video still needs to be downloaded
     [self.parentAdapter log: @"Interstitial successfully loaded but video still needs to be downloaded"];
 }
 
-- (void)onInterstitialVideoLoadFail:(NSError *)error adManager:(MTGInterstitialVideoAdManager *)adManager
+- (void)newInterstitialAdLoadFail:(nonnull NSError *)error adManager:(MTGNewInterstitialAdManager *_Nonnull)adManager
 {
     [self.parentAdapter log: @"Interstitial failed to load: %@", error];
     
@@ -603,13 +605,13 @@ static NSTimeInterval const kDefaultImageTaskTimeoutSeconds = 5.0; // Mintegral 
     [self.delegate didFailToLoadInterstitialAdWithError: adapterError];
 }
 
-- (void)onInterstitialVideoShowSuccess:(MTGInterstitialVideoAdManager *)adManager
+- (void)newInterstitialAdShowSuccess:(MTGNewInterstitialAdManager *_Nonnull)adManager
 {
     [self.parentAdapter log: @"Interstitial displayed"];
     [self.delegate didDisplayInterstitialAd];
 }
 
-- (void)onInterstitialVideoShowFail:(NSError *)error adManager:(MTGInterstitialVideoAdManager *)adManager
+- (void)newInterstitialAdShowFail:(nonnull NSError *)error adManager:(MTGNewInterstitialAdManager *_Nonnull)adManager
 {
     [self.parentAdapter log: @"Interstitial failed to show: %@", error];
     
@@ -623,27 +625,98 @@ static NSTimeInterval const kDefaultImageTaskTimeoutSeconds = 5.0; // Mintegral 
     [self.delegate didFailToDisplayInterstitialAdWithError: adapterError];
 }
 
-- (void)onInterstitialVideoAdClick:(MTGInterstitialVideoAdManager *)adManager
+- (void)newInterstitialAdClicked:(MTGNewInterstitialAdManager *_Nonnull)adManager
 {
     [self.parentAdapter log: @"Interstitial clicked"];
     [self.delegate didClickInterstitialAd];
 }
 
-- (void)onInterstitialVideoAdDismissedWithConverted:(BOOL)converted adManager:(MTGInterstitialVideoAdManager *)adManager
+- (void)newInterstitialAdDismissedWithConverted:(BOOL)converted adManager:(MTGNewInterstitialAdManager *_Nonnull)adManager
 {
     [self.parentAdapter log: @"Interstitial hidden"];
     [self.delegate didHideInterstitialAd];
 }
 
-- (void)onInterstitialVideoAdDidClosed:(MTGInterstitialVideoAdManager *)adManager
+- (void)newInterstitialAdDidClosed:(MTGNewInterstitialAdManager *_Nonnull)adManager
 {
     [self.parentAdapter log: @"Interstitial video completed"];
 }
 
-- (void)onInterstitialVideoEndCardShowSuccess:(MTGInterstitialVideoAdManager *)adManager
+- (void)newInterstitialAdEndCardShowSuccess:(MTGNewInterstitialAdManager *_Nonnull)adManager {
+    [self.parentAdapter log: @"Interstitial endcard shown"];
+}
+
+#pragma mark - MTGNewInterstitialBidAdDelegate Methods
+- (void)newInterstitialBidAdResourceLoadSuccess:(MTGNewInterstitialBidAdManager *_Nonnull)adManager {
+    // Ad has loaded and video has been downloaded
+    [self.parentAdapter log: @"Interstitial successfully loaded and video has been downloaded"];
+    
+    // Passing extra info such as creative id supported in 6.15.0+
+    NSString *requestId = [adManager getRequestIdWithUnitId: adManager.currentUnitId];
+    if ( ALSdk.versionCode >= 6150000 && [requestId al_isValidString] )
+    {
+        [self.delegate performSelector: @selector(didLoadInterstitialAdWithExtraInfo:)
+                            withObject: @{@"creative_id" : requestId}];
+    }
+    else
+    {
+        [self.delegate didLoadInterstitialAd];
+    }
+}
+
+- (void)newInterstitialBidAdLoadSuccess:(MTGNewInterstitialBidAdManager *_Nonnull)adManager {
+    // Ad has loaded but video still needs to be downloaded
+    [self.parentAdapter log: @"Interstitial successfully loaded but video still needs to be downloaded"];
+}
+
+- (void)newInterstitialBidAdLoadFail:(nonnull NSError *)error adManager:(MTGNewInterstitialBidAdManager *_Nonnull)adManager {
+    [self.parentAdapter log: @"Interstitial failed to load: %@", error];
+    
+    MAAdapterError *adapterError = [ALMintegralMediationAdapter toMaxError: error];
+    [self.delegate didFailToLoadInterstitialAdWithError: adapterError];
+}
+
+- (void)newInterstitialBidAdShowSuccess:(MTGNewInterstitialBidAdManager *_Nonnull)adManager
+{
+    [self.parentAdapter log: @"Interstitial displayed"];
+    [self.delegate didDisplayInterstitialAd];
+}
+
+- (void)newInterstitialBidAdShowFail:(nonnull NSError *)error adManager:(MTGNewInterstitialBidAdManager *_Nonnull)adManager {
+    [self.parentAdapter log: @"Interstitial failed to show: %@", error];
+    
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    MAAdapterError *adapterError = [MAAdapterError errorWithCode: -4205
+                                                     errorString: @"Ad Display Failed"
+                                          thirdPartySdkErrorCode: error.code
+                                       thirdPartySdkErrorMessage: error.localizedDescription];
+#pragma clang diagnostic pop
+    [self.delegate didFailToDisplayInterstitialAdWithError: adapterError];
+}
+
+- (void)newInterstitialBidAdClicked:(MTGNewInterstitialBidAdManager *_Nonnull)adManager
+{
+    [self.parentAdapter log: @"Interstitial clicked"];
+    [self.delegate didClickInterstitialAd];
+}
+
+- (void)newInterstitialBidAdDismissedWithConverted:(BOOL)converted adManager:(MTGNewInterstitialBidAdManager *_Nonnull)adManager
+{
+    [self.parentAdapter log: @"Interstitial hidden"];
+    [self.delegate didHideInterstitialAd];
+}
+
+- (void)newInterstitialBidAdDidClosed:(MTGNewInterstitialBidAdManager *_Nonnull)adManager
+{
+    [self.parentAdapter log: @"Interstitial video completed"];
+}
+
+- (void)newInterstitialBidAdEndCardShowSuccess:(MTGNewInterstitialBidAdManager *_Nonnull)adManager
 {
     [self.parentAdapter log: @"Interstitial endcard shown"];
 }
+
 
 @end
 
